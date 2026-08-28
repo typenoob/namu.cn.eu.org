@@ -16,8 +16,9 @@ export default function Page() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentPath, setCurrentPath] = useState<string>(root); // 当前路径状态
-    const [pathHistory, setPathHistory] = useState<string[]>([""]); // 路径历史记录
+    const [pathHistory, setPathHistory] = useState<string[]>([root]); // 路径历史记录
     const [currentIndex, setCurrentIndex] = useState(0); // 当前路径索引
+    const [reloadKey, setReloadKey] = useState(0); // 路径未变化时强制重新加载的计数器
 
     useEffect(() => {
         const loadFiles = async () => {
@@ -56,7 +57,7 @@ export default function Page() {
         };
 
         loadFiles();
-    }, [currentPath]); // 依赖 currentPath，路径变化时重新加载
+    }, [currentPath, reloadKey]); // 依赖 currentPath 与 reloadKey，路径变化或主动刷新时重新加载
 
     // 处理文件夹点击事件
     const handleFolderClick = (folderName: string) => {
@@ -70,6 +71,7 @@ export default function Page() {
         setCurrentIndex(newHistory.length - 1);
         setCurrentPath(newPath);
         setLoading(true);
+        setReloadKey(k => k + 1);
     };
 
     // 处理返回上级目录
@@ -83,15 +85,19 @@ export default function Page() {
             setCurrentIndex(prev => prev + 1);
             setCurrentPath(newPath);
             setLoading(true);
+            setReloadKey(k => k + 1);
         }
     };
 
     // 处理返回根目录
     const handleGoToRoot = () => {
-        setPathHistory([...pathHistory, ""]);
-        setCurrentIndex(prev => prev + 1);
+        const newHistory = pathHistory.slice(0, currentIndex + 1);
+        newHistory.push(root);
+        setPathHistory(newHistory);
+        setCurrentIndex(newHistory.length - 1);
         setCurrentPath(root);
         setLoading(true);
+        setReloadKey(k => k + 1);
     };
 
     // 前进/后退导航
@@ -101,6 +107,7 @@ export default function Page() {
             setCurrentIndex(newIndex);
             setCurrentPath(pathHistory[newIndex]);
             setLoading(true);
+            setReloadKey(k => k + 1);
         }
     };
 
@@ -110,15 +117,19 @@ export default function Page() {
             setCurrentIndex(newIndex);
             setCurrentPath(pathHistory[newIndex]);
             setLoading(true);
+            setReloadKey(k => k + 1);
         }
     };
 
     // 处理面包屑点击
     const handleBreadcrumbClick = (path: string) => {
-        setPathHistory([...pathHistory, path]);
-        setCurrentIndex(prev => prev + 1);
+        const newHistory = pathHistory.slice(0, currentIndex + 1);
+        newHistory.push(path);
+        setPathHistory(newHistory);
+        setCurrentIndex(newHistory.length - 1);
         setCurrentPath(path);
         setLoading(true);
+        setReloadKey(k => k + 1);
     };
 
     // 加载状态
@@ -233,8 +244,7 @@ export default function Page() {
                 <div className="flex items-center gap-2 flex-wrap flex-1">
                     {breadcrumbs.map((folder, index) => {
                         const pathParts = breadcrumbs.slice(0, index + 1);
-                        console.log(pathParts, folder)
-                        const path = pathParts.join('/'); // 移除开头的空路径
+                        const path = '/' + pathParts.join('/'); // 补回开头的斜杠，确保请求路径完整
 
                         return (
                             <div key={index} className="flex items-center">
