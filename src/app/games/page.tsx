@@ -8,6 +8,11 @@ const games = [
 		title: "Snake",
 		description: "Classic snake game built with C and WebAssembly.",
 	},
+	{
+		name: "cube",
+		title: "Rubik's Cube",
+		description: "Interactive 3×3 Rubik's Cube built with Godot.",
+	},
 ] as const;
 
 export default function GamesPage() {
