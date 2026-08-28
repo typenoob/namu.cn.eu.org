@@ -14242,7 +14242,9 @@ const Engine = (function () {
 	Engine.load = function (basePath, size) {
 		if (loadPromise == null) {
 			loadPath = basePath;
-			loadPromise = preloader.loadPromise(`${loadPath}.wasm`, size, true);
+			// The wasm is gzip-compressed to stay under hosting per-file size limits;
+			// it is decompressed at runtime before instantiation (see `init` below).
+			loadPromise = preloader.loadPromise(`${loadPath}.wasm.gz`, size, true);
 			requestAnimationFrame(preloader.animateProgress);
 		}
 		return loadPromise;
@@ -14282,7 +14284,7 @@ const Engine = (function () {
 						initPromise = Promise.reject(new Error('A base path must be provided when calling `init` and the engine is not loaded.'));
 						return initPromise;
 					}
-					Engine.load(basePath, this.config.fileSizes[`${basePath}.wasm`]);
+					Engine.load(basePath, this.config.fileSizes[`${basePath}.wasm.gz`]);
 				}
 				const me = this;
 				function doInit(promise) {
@@ -14290,8 +14292,19 @@ const Engine = (function () {
 					// This caused a regression with the Mono build (which uses an older emscripten version).
 					// Make sure to test that when refactoring.
 					return new Promise(function (resolve, reject) {
-						promise.then(function (response) {
-							const cloned = new Response(response.clone().body, { 'headers': [['content-type', 'application/wasm']] });
+						promise.then(async function (response) {
+							// The wasm is shipped gzip-compressed (`.wasm.gz`) to stay under
+							// hosting per-file size limits, so decompress it at runtime.
+							// Sniff the gzip magic bytes in case the server already decoded
+							// the body via `Content-Encoding: gzip`.
+							const bytes = new Uint8Array(await response.arrayBuffer());
+							let body;
+							if (bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+								body = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+							} else {
+								body = new Blob([bytes]).stream();
+							}
+							const cloned = new Response(body, { 'headers': [['content-type', 'application/wasm']] });
 							Godot(me.config.getModuleConfig(loadPath, cloned)).then(function (module) {
 								const paths = me.config.persistentPaths;
 								module['initFS'](paths).then(function (err) {

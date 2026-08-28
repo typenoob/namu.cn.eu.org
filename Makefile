@@ -7,15 +7,22 @@ DIST_DIR = public/snake
 # 自动查找所有 .c 文件
 C_FILES = $(wildcard $(SRC_DIR)/*.c)
 JS_FILES = $(patsubst $(SRC_DIR)/%.c, $(DIST_DIR)/%.js, $(C_FILES))
+WASM_GZ_FILES = $(patsubst $(SRC_DIR)/%.c, $(DIST_DIR)/%.wasm.gz, $(C_FILES))
 
 .PHONY: all clean
 
-all: $(JS_FILES)
+all: $(JS_FILES) $(WASM_GZ_FILES)
 
 # 模式规则：每个 .c 对应一个 .js
 $(DIST_DIR)/%.js: $(SRC_DIR)/%.c
 	@echo "Compiling: $< -> $@"
 	@$(CC) $< -o $@ $(CFLAGS)
+
+# 将 wasm 压缩为 .gz 以控制部署体积，运行时解压
+$(DIST_DIR)/%.wasm.gz: $(DIST_DIR)/%.wasm
+	@echo "Compressing: $< -> $@"
+	@gzip -9 -n -c $< > $@
+	@rm -f $<
 
 clean:
 	rm -rf $(DIST_DIR)

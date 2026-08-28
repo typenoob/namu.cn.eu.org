@@ -35,7 +35,28 @@
 			Please try updating or use a different browser.
 		</canvas>
 		<script>
-			var Module = {};
+			// The wasm is shipped gzip-compressed (snake.wasm.gz) to stay under hosting
+			// per-file size limits, so decompress it at runtime before instantiation.
+			// Sniff the gzip magic bytes in case the server already decoded the body
+			// via `Content-Encoding: gzip`.
+			var Module = {
+				instantiateWasm: async function (info, receiveInstance) {
+					const response = await fetch('snake.wasm.gz');
+					const bytes = new Uint8Array(await response.arrayBuffer());
+					let buffer;
+					if (bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+						const stream = new Blob([bytes])
+							.stream()
+							.pipeThrough(new DecompressionStream('gzip'));
+						buffer = await new Response(stream).arrayBuffer();
+					} else {
+						buffer = bytes.buffer;
+					}
+					const { instance } = await WebAssembly.instantiate(buffer, info);
+					receiveInstance(instance);
+					return instance.exports;
+				},
+			};
 		</script>
 		<script src="snake.js"></script>
 	</body>
