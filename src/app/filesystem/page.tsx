@@ -15,10 +15,10 @@ export default function Page() {
     const [files, setFiles] = useState<FileInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [currentPath, setCurrentPath] = useState<string>(root); // 当前路径状态
-    const [pathHistory, setPathHistory] = useState<string[]>([root]); // 路径历史记录
-    const [currentIndex, setCurrentIndex] = useState(0); // 当前路径索引
-    const [reloadKey, setReloadKey] = useState(0); // 路径未变化时强制重新加载的计数器
+    const [currentPath, setCurrentPath] = useState<string>(root); // current path state
+    const [pathHistory, setPathHistory] = useState<string[]>([root]); // path history
+    const [currentIndex, setCurrentIndex] = useState(0); // current index in history
+    const [reloadKey, setReloadKey] = useState(0); // forces reload when path is unchanged
 
     useEffect(() => {
         const loadFiles = async () => {
@@ -37,9 +37,9 @@ export default function Page() {
 
                 if (!response.ok) {
                     if (response.status === 404) {
-                        throw new Error(`目录不存在: ${currentPath || '根目录'}`);
+                        throw new Error(`Directory not found: ${currentPath || 'root'}`);
                     }
-                    throw new Error(`HTTP 错误! 状态码: ${response.status}`);
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
 
                 const data = await response.json();
@@ -49,7 +49,7 @@ export default function Page() {
                 setTime(update_time);
             } catch (err) {
                 console.error("Failed to load files:", err);
-                setError(err instanceof Error ? err.message : "无法加载文件列表");
+                setError(err instanceof Error ? err.message : "Failed to load file list");
                 setFiles([]);
             } finally {
                 setLoading(false);
@@ -57,13 +57,13 @@ export default function Page() {
         };
 
         loadFiles();
-    }, [currentPath, reloadKey]); // 依赖 currentPath 与 reloadKey，路径变化或主动刷新时重新加载
+    }, [currentPath, reloadKey]); // reload when path changes or refresh is triggered
 
-    // 处理文件夹点击事件
+    // Handle folder click
     const handleFolderClick = (folderName: string) => {
         const newPath = currentPath ? `${currentPath}/${folderName}` : folderName;
 
-        // 更新路径历史
+        // Update path history
         const newHistory = pathHistory.slice(0, currentIndex + 1);
         newHistory.push(newPath);
 
@@ -74,11 +74,11 @@ export default function Page() {
         setReloadKey(k => k + 1);
     };
 
-    // 处理返回上级目录
+    // Handle going up one directory
     const handleGoBack = () => {
         if (currentPath && currentPath != root) {
             const pathParts = currentPath.split('/');
-            pathParts.pop(); // 移除最后一级
+            pathParts.pop(); // remove the last segment
             const newPath = pathParts.join('/');
 
             setPathHistory([...pathHistory, newPath]);
@@ -89,7 +89,7 @@ export default function Page() {
         }
     };
 
-    // 处理返回根目录
+    // Handle returning to root
     const handleGoToRoot = () => {
         const newHistory = pathHistory.slice(0, currentIndex + 1);
         newHistory.push(root);
@@ -100,7 +100,7 @@ export default function Page() {
         setReloadKey(k => k + 1);
     };
 
-    // 前进/后退导航
+    // Back/forward navigation
     const handleNavigateBack = () => {
         if (currentIndex > 0) {
             const newIndex = currentIndex - 1;
@@ -121,7 +121,7 @@ export default function Page() {
         }
     };
 
-    // 处理面包屑点击
+    // Handle breadcrumb click
     const handleBreadcrumbClick = (path: string) => {
         const newHistory = pathHistory.slice(0, currentIndex + 1);
         newHistory.push(path);
@@ -132,13 +132,13 @@ export default function Page() {
         setReloadKey(k => k + 1);
     };
 
-    // 加载状态
+    // Loading state
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">正在加载文件列表...</p>
+                    <p className="mt-4 text-gray-600">Loading file list...</p>
                     {currentPath && (
                         <p className="mt-2 text-sm text-gray-500">{currentPath}</p>
                     )}
@@ -147,7 +147,7 @@ export default function Page() {
         );
     }
 
-    // 错误状态
+    // Error state
     if (error) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -159,13 +159,13 @@ export default function Page() {
                             onClick={() => window.location.reload()}
                             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                         >
-                            重试
+                            Retry
                         </button>
                         <button
                             onClick={handleGoToRoot}
                             className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
                         >
-                            返回根目录
+                            Back to root
                         </button>
                     </div>
                 </div>
@@ -173,36 +173,36 @@ export default function Page() {
         );
     }
 
-    // 空状态
+    // Empty state
     if (files.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-gray-500">当前目录为空</p>
+                    <p className="text-gray-500">This directory is empty</p>
                     <button
                         onClick={handleGoToRoot}
                         className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     >
-                        返回根目录
+                        Back to root
                     </button>
                 </div>
             </div>
         );
     }
 
-    // 生成面包屑路径
+    // Build breadcrumb path
     const breadcrumbs = currentPath ? [...currentPath.split('/').filter(Boolean)] : [];
     return (
         <div className="container mx-auto p-4 font-mono text-sm">
-            {/* 导航栏 */}
+            {/* Navigation bar */}
             <div className="mb-4 flex items-center gap-2">
-                {/* 导航按钮 */}
+                {/* Navigation buttons */}
                 <div className="flex items-center gap-2 mr-4">
                     <button
                         onClick={handleNavigateBack}
                         disabled={currentIndex === 0}
                         className={`p-1 rounded ${currentIndex === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
-                        title="后退"
+                        title="Back"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -212,7 +212,7 @@ export default function Page() {
                         onClick={handleNavigateForward}
                         disabled={currentIndex === pathHistory.length - 1}
                         className={`p-1 rounded ${currentIndex === pathHistory.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
-                        title="前进"
+                        title="Forward"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -222,17 +222,17 @@ export default function Page() {
                         onClick={handleGoBack}
                         disabled={!currentPath}
                         className={`p-1 rounded ${!currentPath ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
-                        title="上级目录"
+                        title="Parent directory"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v-6m0 0l-3+3m3 -3l+3+3" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v-6m0 0l-3 3m3-3l3 3" />
                         </svg>
                     </button>
                     <button
                         onClick={handleGoToRoot}
                         className="p-1 rounded text-gray-600 hover:bg-gray-100"
-                        title="根目录"
+                        title="Root"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" />
@@ -240,11 +240,11 @@ export default function Page() {
                     </button>
                 </div>
 
-                {/* 面包屑导航 */}
+                {/* Breadcrumb navigation */}
                 <div className="flex items-center gap-2 flex-wrap flex-1">
                     {breadcrumbs.map((folder, index) => {
                         const pathParts = breadcrumbs.slice(0, index + 1);
-                        const path = '/' + pathParts.join('/'); // 补回开头的斜杠，确保请求路径完整
+                        const path = '/' + pathParts.join('/'); // prepend slash so the request path is complete
 
                         return (
                             <div key={index} className="flex items-center">
@@ -289,7 +289,7 @@ export default function Page() {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {/* 父目录链接 */}
+                        {/* Parent directory link */}
                         {currentPath && (
                             <tr className="hover:bg-gray-50">
                                 <td className="px-4 py-3 whitespace-nowrap">
@@ -342,18 +342,18 @@ export default function Page() {
 
             <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
                 <div>
-                    共 {files.length} 个项目
-                    {currentPath && " (当前目录)"}
+                    {files.length} items
+                    {currentPath && " (current)"}
                 </div>
                 <div className="flex gap-4">
                     <div>
-                        目录: {files.filter(f => f.isDirectory).length} 个
+                        Folders: {files.filter(f => f.isDirectory).length}
                     </div>
                     <div>
-                        文件: {files.filter(f => !f.isDirectory).length} 个
+                        Files: {files.filter(f => !f.isDirectory).length}
                     </div>
                     <div>
-                        总大小: {formatFileSize(files.reduce((sum, f) => sum + (f.size || 0), 0))}
+                        Total size: {formatFileSize(files.reduce((sum, f) => sum + (f.size || 0), 0))}
                     </div>
                 </div>
             </div>
