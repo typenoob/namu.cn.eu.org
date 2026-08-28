@@ -2,7 +2,7 @@
 CC = emcc
 CFLAGS = --use-port=sdl3 -s EXIT_RUNTIME=1
 SRC_DIR = src/games
-DIST_DIR = public
+DIST_DIR = public/snake
 
 # 自动查找所有 .c 文件
 C_FILES = $(wildcard $(SRC_DIR)/*.c)
